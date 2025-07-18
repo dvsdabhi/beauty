@@ -9,6 +9,7 @@
             <h2 class="mb-4 text-center">Customer Login</h2>
             <form method="POST" class="p-4 border rounded bg-light">
                 {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
                 <div class="mb-3">
                     <label class="form-label">Email address</label>
                     <input type="email" name="email" class="form-control" placeholder="Enter your email" required>

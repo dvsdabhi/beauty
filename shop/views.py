@@ -1,9 +1,12 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from django.contrib import messages
 from django.core.mail import send_mail
-from .models import Customer
+from .models import Customer, Product, Category, CartItem, ProductReview
+from utils.decorators import customer_login_required
 import random
 import re
+from decimal import Decimal
 
 # Create your views here.
 
@@ -60,6 +63,7 @@ def verify_otp(request):
     return render(request, 'verify_otp.html')
 
 def login(request):
+    next_url = request.GET.get('next') or '/'
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
@@ -73,10 +77,10 @@ def login(request):
             request.session['customer_id'] = customer.id
             request.session['customer_name'] = customer.name
             messages.success(request, f"Welcome {customer.name}")
-            return redirect('home')
+            return redirect(request.POST.get('next') or 'home')
         except Customer.DoesNotExist:
             messages.error(request, "Invalid credentials.")
-    return render(request, 'login.html')
+    return render(request, 'login.html', {'next': next_url})
 
 def logout_view(request):
     request.session.flush()
@@ -146,7 +150,38 @@ def reset_password(request):
     return render(request, 'reset_password.html')
 
 def shop(request):
-    return render(request, 'shop.html')
+    products = Product.objects.all().prefetch_related('images')
+    categories = Category.objects.all()
+    return render(request, 'shop.html', {'products': products, 'categories': categories})
+
+@customer_login_required
+def add_review(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    customer_id = request.session.get('customer_id')  # Session-based login system
+
+    if request.method == 'POST':
+        rating = int(request.POST.get('rating'))
+        comment = request.POST.get('comment')
+
+        customer = get_object_or_404(Customer, id=customer_id)
+
+        # Optional: prevent duplicate review from same customer
+        existing_review = ProductReview.objects.filter(product=product, user=customer).first()
+        if existing_review:
+            existing_review.rating = rating
+            existing_review.comment = comment
+            existing_review.save()
+        else:
+            ProductReview.objects.create(
+                product=product,
+                user=customer,
+                rating=rating,
+                comment=comment
+            )
+
+        return redirect('product_detail', id=product_id)
+
+    return redirect('product_detail', id=product_id)
 
 def contact(request):
     return render(request, 'contact.html')
@@ -154,22 +189,87 @@ def contact(request):
 def chackout(request):
     return render(request, 'chackout.html')
 
-def shopDetail(request):
-    return render(request, 'shop-detail.html')
+# def shopDetail(request):
+#     return render(request, 'shop-detail.html')
+
+def product_detail(request, id):
+    product = get_object_or_404(Product, id=id)
+    return render(request, 'shop-detail.html', {'product': product})
 
 def testimonial(request):
     return render(request, 'testimonial.html')
 
-def cart(request):
-    return render(request, 'cart.html')
+@customer_login_required
+def add_to_cart(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    customer = get_object_or_404(Customer, id=request.session['customer_id'])
+
+    cart_item, created = CartItem.objects.get_or_create(
+        customer=customer,
+        product=product
+    )
+    if not created:
+        cart_item.quantity += 1
+    cart_item.save()
+
+    return redirect('cart')
+
+@customer_login_required
+def cart_view(request):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return redirect('login')
+    customer = get_object_or_404(Customer, id=request.session['customer_id'])
+    cart_items = CartItem.objects.filter(customer=customer)
+    total = sum(item.total_price() for item in cart_items)
+    shipping = Decimal('40.00')  # FIXED: Use Decimal instead of float
+    grand_total = total + shipping
+    # return render(request, 'cart.html', {'cart_items': cart_items, 'total': total})
+    return render(request, 'cart.html', {
+        'cart_items': cart_items,
+        'total': total,
+        'shipping': 40.00,
+        'grand_total': grand_total
+    })
+
+@customer_login_required
+def update_quantity_ajax(request):
+    if request.method == "POST" and request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        item_id = request.POST.get("item_id")
+        action = request.POST.get("action")
+
+        try:
+            item = CartItem.objects.get(id=item_id)
+            if action == 'increase':
+                item.quantity += 1
+            elif action == 'decrease' and item.quantity > 1:
+                item.quantity -= 1
+            item.save()
+
+            total = sum(i.total_price() for i in CartItem.objects.filter(customer=item.customer))
+            shipping = Decimal('40.00')
+            grand_total = total + shipping
+
+            return JsonResponse({
+                'quantity': item.quantity,
+                'item_total': float(item.total_price()),
+                'cart_total': float(total),
+                'grand_total': float(grand_total),
+                "shipping": float(shipping)
+            })
+        except CartItem.DoesNotExist:
+            return JsonResponse({'error': 'Item not found'}, status=404)
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@customer_login_required
+def remove_cart_item(request, item_id):
+    cart_item = get_object_or_404(CartItem, id=item_id)
+    cart_item.delete()
+    return redirect('cart')
 
 def notFound(request):
     return render(request, '404.html')
-
-from django.core.mail import send_mail
-import random
-from .models import Customer
-from django.contrib import messages
 
 def resend_otp(request):
     email = request.session.get('email')  # stored in session during register

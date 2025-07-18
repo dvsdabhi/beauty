@@ -495,3 +495,26 @@
 }
 /*** Footer End ***/
 
+.rating {
+    display: flex;
+    justify-content: center;
+    flex-direction: row-reverse;
+    gap: 5px;
+  }
+  
+  .rating input {
+    display: none;
+  }
+  
+  .rating label {
+    font-size: 2rem;
+    color: #ccc;
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+  
+  .rating input:checked ~ label,
+  .rating label:hover,
+  .rating label:hover ~ label {
+    color: #f7c600;
+  }
