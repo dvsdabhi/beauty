@@ -11,7 +11,8 @@ from decimal import Decimal
 # Create your views here.
 
 def home(request):
-    return render(request, 'index.html')
+    products = Product.objects.all()
+    return render(request, 'index.html',{"products": products})
 
 def register(request):
     if request.method == 'POST':
@@ -189,12 +190,10 @@ def contact(request):
 def chackout(request):
     return render(request, 'chackout.html')
 
-# def shopDetail(request):
-#     return render(request, 'shop-detail.html')
-
 def product_detail(request, id):
     product = get_object_or_404(Product, id=id)
-    return render(request, 'shop-detail.html', {'product': product})
+    attributes = product.attributes.all()
+    return render(request, 'shop-detail.html', {'product': product, "attributes":attributes})
 
 def testimonial(request):
     return render(request, 'testimonial.html')

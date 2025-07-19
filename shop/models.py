@@ -16,10 +16,34 @@ class Customer(models.Model):
 # Category Table
 class Category(models.Model):
     name = models.CharField(max_length=100)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subcategories')
+    
+    class Meta:
+        verbose_name_plural = 'Categories'
 
     def __str__(self):
         return self.name
 
+    def is_main_category(self):
+        return self.parent is None
+
+    def get_subcategories(self):
+        return self.subcategories.all()
+    
+    @property
+    def get_main_category(self):
+        category = self
+        while category.parent is not None:
+            category = category.parent
+        return category.name
+
+    def full_path(self):
+        categories = [self.name]
+        parent = self.parent
+        while parent is not None:
+            categories.append(parent.name)
+            parent = parent.parent
+        return ' > '.join(reversed(categories))
 
 # Product Table
 class Product(models.Model):
@@ -36,8 +60,8 @@ class Product(models.Model):
     description = models.TextField()
     stock = models.PositiveIntegerField(default=0)
 
-    weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    unit = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='kg')
+    # weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    # unit = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='kg')
     country_of_origin = models.CharField(max_length=100, default="India")
     bullet_points = models.TextField(blank=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -55,6 +79,21 @@ class Product(models.Model):
             return round(sum(review.rating for review in reviews) / reviews.count(), 1)
         return 0
 
+
+class Attribute(models.Model):
+    name = models.CharField(max_length=100, unique=True)  # e.g., "Size", "Color", "Skin Type"
+
+    def __str__(self):
+        return self.name
+
+class ProductAttribute(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='attributes')
+    attribute = models.ForeignKey(Attribute, on_delete=models.CASCADE)
+    value = models.CharField(max_length=200)
+    stock = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.attribute.name}: {self.value}"
 
 # Product Image Table (Many-to-One)
 class ProductImage(models.Model):

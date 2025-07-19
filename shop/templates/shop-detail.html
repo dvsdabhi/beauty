@@ -26,34 +26,36 @@
                             </div>
                             <div class="col-lg-6">
                                 <h4 class="fw-bold mb-3">{{ product.name }}</h4>
-                                <p class="mb-3">Category: {{ product.category.name }}</p>
+                                <p class="mb-3">Category: {{ product.category.full_path }}</p>
                                 <h5 class="fw-bold mb-3">₹{{ product.price }}</h5>
+                                <ul>
+                                    {% for attr in attributes %}
+                                      {% if attr.attribute.name == "Color" or attr.attribute.name == "Size" %}
+                                        <li><strong>{{ attr.attribute.name }}:</strong> {{ attr.value }}</li>
+                                      {% endif %}
+                                    {% endfor %}
+                                </ul>
                                 <div class="d-flex mb-4">
-                                    <i class="fa fa-star text-secondary"></i>
-                                    <i class="fa fa-star text-secondary"></i>
-                                    <i class="fa fa-star text-secondary"></i>
-                                    <i class="fa fa-star text-secondary"></i>
-                                    <i class="fa fa-star"></i>
+                                    {% with avg=product.average_rating %}
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= avg %}
+                                                <i class="fa fa-star text-warning"></i>
+                                            {% elif avg|floatformat:1 == forloop.counter0|stringformat:"d"|add:"0.5" %}
+                                                <i class="fa fa-star-half-alt text-warning"></i>  {# Optional: for half stars if needed #}
+                                            {% else %}
+                                                <i class="fa fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <span class="ms-2">({{ avg }}/5)</span>
+                                    {% endwith %}
                                 </div>
+                                <a href="{% url 'add_to_cart' product.id %}" class="btn border border-secondary rounded-pill px-4 py-2 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
+                                <a href="#" class="btn border border-secondary rounded-pill px-4 py-2 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Buy Now</a>
                                 <ul>
                                     {% for point in product.get_bullet_points %}
                                         <li>{{ point }}</li>
                                     {% endfor %}
                                 </ul>
-                                <!-- <div class="input-group quantity mb-5" style="width: 100px;">
-                                    <div class="input-group-btn">
-                                        <button class="btn btn-sm btn-minus rounded-circle bg-light border" >
-                                            <i class="fa fa-minus"></i>
-                                        </button>
-                                    </div>
-                                    <input type="text" class="form-control form-control-sm text-center border-0" value="1">
-                                    <div class="input-group-btn">
-                                        <button class="btn btn-sm btn-plus rounded-circle bg-light border">
-                                            <i class="fa fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div> -->
-                                <a href="{% url 'add_to_cart' product.id %}" class="btn border border-secondary rounded-pill px-4 py-2 mb-4 text-primary"><i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart</a>
                             </div>
                             <div class="col-lg-12">
                                 <nav>
@@ -74,36 +76,22 @@
                                                 <div class="col-6">
                                                     <div class="row bg-light align-items-center text-center justify-content-center py-2">
                                                         <div class="col-6">
-                                                            <p class="mb-0">Weight</p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <p class="mb-0">{{ product.weight }} {{ product.unit}}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row text-center align-items-center justify-content-center py-2">
-                                                        <div class="col-6">
                                                             <p class="mb-0">Country of Origin</p>
                                                         </div>
                                                         <div class="col-6">
                                                             <p class="mb-0">{{ product.country_of_origin }}</p>
                                                         </div>
                                                     </div>
-                                                    <div class="row bg-light text-center align-items-center justify-content-center py-2">
-                                                        <div class="col-6">
-                                                            <p class="mb-0">Quality</p>
+                                                    {% for attr in attributes %}
+                                                        <div class="row bg-light text-center align-items-center justify-content-center py-2">
+                                                            <div class="col-6">
+                                                                <p class="mb-0">{{ attr.attribute.name }}</p>
+                                                            </div>
+                                                            <div class="col-6">
+                                                                <p class="mb-0">{{ attr.value }}</p>
+                                                            </div>
                                                         </div>
-                                                        <div class="col-6">
-                                                            <p class="mb-0">Organic</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row text-center align-items-center justify-content-center py-2">
-                                                        <div class="col-6">
-                                                            <p class="mb-0">Сheck</p>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <p class="mb-0">Healthy</p>
-                                                        </div>
-                                                    </div>
+                                                    {% endfor %}
                                                     <p><strong>Average Rating:</strong> {{ product.average_rating }} / 5 ⭐</p>
                                                 </div>
                                             </div>
